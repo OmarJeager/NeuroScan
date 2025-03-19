@@ -1,5 +1,206 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, simpledialog, filedialog
+import time
+import threading
+
+class ADHDApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("ADHD Management App")
+        self.root.geometry("800x600")
+
+        # Header Section
+        self.header_frame = tk.Frame(root)
+        self.header_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=5)
+
+        self.start_test_button = tk.Button(self.header_frame, text="Start ADHD Test", command=self.start_adhd_test)
+        self.start_test_button.grid(row=0, column=0, padx=5)
+
+        self.export_button = tk.Button(self.header_frame, text="Export Data", command=self.export_data)
+        self.export_button.grid(row=0, column=1, padx=5)
+
+        # Main container for organizing sections
+        self.main_frame = tk.Frame(root)
+        self.main_frame.grid(row=1, column=0, padx=10, pady=5, sticky="nsew")
+        self.main_frame.grid_rowconfigure(0, weight=1)
+        self.main_frame.grid_columnconfigure(0, weight=1)
+
+        # Task List Section
+        self.task_frame = tk.LabelFrame(self.main_frame, text="Task List", padx=10, pady=10)
+        self.task_frame.grid(row=0, column=0, padx=10, pady=5, sticky="nsew")
+
+        self.task_list = []
+        self.task_display = tk.Listbox(self.task_frame, selectmode=tk.MULTIPLE, height=5)
+        self.task_display.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        self.add_task_button = tk.Button(self.task_frame, text="Add Task", command=self.add_task)
+        self.add_task_button.grid(row=1, column=0, pady=5)
+
+        # Habit Tracker Section
+        self.habit_frame = tk.LabelFrame(self.main_frame, text="Daily Habits", padx=10, pady=10)
+        self.habit_frame.grid(row=1, column=0, padx=10, pady=5, sticky="nsew")
+
+        self.habit_entry = tk.Entry(self.habit_frame)
+        self.habit_entry.grid(row=0, column=0, pady=5, sticky="ew", padx=5)
+        self.add_habit_button = tk.Button(self.habit_frame, text="Add Habit", command=self.add_habit)
+        self.add_habit_button.grid(row=1, column=0, pady=5)
+        self.habit_list = tk.Listbox(self.habit_frame, selectmode=tk.MULTIPLE, height=5)
+        self.habit_list.grid(row=2, column=0, sticky="nsew", padx=5, pady=5)
+
+        # Pomodoro Timer Section
+        self.timer_frame = tk.LabelFrame(self.main_frame, text="Pomodoro Timer", padx=10, pady=10)
+        self.timer_frame.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
+
+        self.timer_label = tk.Label(self.timer_frame, text="Timer: 00:00", font=("Arial", 24))
+        self.timer_label.grid(row=0, column=0)
+
+        self.timer_entry = tk.Entry(self.timer_frame, width=10)
+        self.timer_entry.insert(0, "25")  # Default timer duration
+        self.timer_entry.grid(row=1, column=0, pady=5)
+
+        self.start_timer_button = tk.Button(self.timer_frame, text="Start Timer", command=self.start_timer)
+        self.start_timer_button.grid(row=2, column=0, pady=5)
+
+        # Notes Section
+        self.notes_frame = tk.LabelFrame(self.main_frame, text="Notes", padx=10, pady=10)
+        self.notes_frame.grid(row=3, column=0, padx=10, pady=5, sticky="nsew")
+
+        self.notes_text = tk.Text(self.notes_frame, height=5, width=50)
+        self.notes_text.grid(row=0, column=0, sticky="nsew")
+        self.save_notes_button = tk.Button(self.notes_frame, text="Save Notes", command=self.save_notes)
+        self.save_notes_button.grid(row=1, column=0, pady=5)
+
+    def add_task(self):
+        task = simpledialog.askstring("Task", "Enter a new task:")
+        if task:
+            self.task_list.append(task)
+            self.task_display.insert(tk.END, task)
+
+    def start_timer(self):
+        try:
+            minutes = int(self.timer_entry.get())
+            if minutes <= 0:
+                raise ValueError("Timer duration must be greater than 0.")
+            self.timer_thread = threading.Thread(target=self.pomodoro_countdown, args=(minutes * 60,))
+            self.timer_thread.daemon = True  # Make the thread a daemon so it exits when the main program exits
+            self.timer_thread.start()
+        except ValueError as e:
+            messagebox.showerror("Error", str(e))
+
+    def pomodoro_countdown(self, seconds):
+        while seconds:
+            mins, secs = divmod(seconds, 60)
+            time_str = f"{mins:02}:{secs:02}"
+            self.root.after(0, self.update_timer_label, time_str)
+            time.sleep(1)
+            seconds -= 1
+        self.root.after(0, self.timer_finished)
+
+    def update_timer_label(self, time_str):
+        self.timer_label.config(text=f"Timer: {time_str}")
+
+    def timer_finished(self):
+        messagebox.showinfo("Timer", "Time's up! Take a break.")
+
+    def save_notes(self):
+        notes = self.notes_text.get("1.0", tk.END).strip()
+        with open("notes.txt", "w") as file:
+            file.write(notes)
+        messagebox.showinfo("Notes", "Notes saved successfully!")
+
+    def add_habit(self):
+        habit = self.habit_entry.get()
+        if habit:
+            self.habit_list.insert(tk.END, habit)
+            self.habit_entry.delete(0, tk.END)
+
+    def start_adhd_test(self):
+        self.adhd_test_window = tk.Toplevel(self.root)
+        self.adhd_test_window.title("ADHD Test")
+        self.adhd_test_window.geometry("600x400")
+
+        self.current_question = 0
+        self.user_responses = []
+
+        self.question_label = tk.Label(self.adhd_test_window, text=questions[self.current_question], wraplength=400, justify="left")
+        self.question_label.pack(pady=20)
+
+        self.answer_var = tk.StringVar()
+        self.radio_buttons = []
+        for i in range(len(answers[self.current_question])):
+            rb = tk.Radiobutton(self.adhd_test_window, text=answers[self.current_question][i], variable=self.answer_var, value=answers[self.current_question][i])
+            rb.pack(anchor="w")
+            self.radio_buttons.append(rb)
+
+        self.next_button = tk.Button(self.adhd_test_window, text="Next", command=self.next_question)
+        self.next_button.pack(pady=20)
+
+    def next_question(self):
+        selected_answer = self.answer_var.get()
+        if not selected_answer:
+            messagebox.showwarning("Warning", "Please select an answer!")
+            return
+
+        self.user_responses.append(selected_answer)
+        self.current_question += 1
+
+        if self.current_question < len(questions):
+            self.question_label.config(text=questions[self.current_question])
+            for i, option in enumerate(answers[self.current_question]):
+                self.radio_buttons[i].config(text=option, value=option)
+            self.answer_var.set(None)
+        else:
+            self.show_result()
+
+    def show_result(self):
+        total_score = sum(scoring[response] for response in self.user_responses if response in scoring)
+
+        if total_score <= 10:
+            result = "Low likelihood of ADHD."
+        elif total_score <= 20:
+            result = "Moderate likelihood of ADHD."
+        else:
+            result = "High likelihood of ADHD."
+
+        messagebox.showinfo("ADHD Test Result", f"Your total score is {total_score}. {result}")
+        self.adhd_test_window.destroy()
+
+    def export_data(self):
+        # Get all tasks
+        all_tasks = [self.task_display.get(i) for i in range(self.task_display.size())]
+
+        # Get all habits
+        all_habits = [self.habit_list.get(i) for i in range(self.habit_list.size())]
+
+        # Get notes
+        notes = self.notes_text.get("1.0", tk.END).strip()
+
+        # Get test results if available
+        if hasattr(self, 'user_responses') and self.user_responses:
+            total_score = sum(scoring[response] for response in self.user_responses if response in scoring)
+            if total_score <= 10:
+                result = "Low likelihood of ADHD."
+            elif total_score <= 20:
+                result = "Moderate likelihood of ADHD."
+            else:
+                result = "High likelihood of ADHD."
+            test_results = f"ADHD Test Score: {total_score}\n{result}"
+        else:
+            test_results = "No ADHD test results available."
+
+        # Combine all data
+        export_data = (
+            "===== Tasks =====\n" + "\n".join(all_tasks) + "\n\n" +
+            "===== Habits =====\n" + "\n".join(all_habits) + "\n\n" +
+            "===== Notes =====\n" + notes + "\n\n" +
+            "===== Test Results =====\n" + test_results
+        )
+
+        # Save to file
+        file_path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text Files", "*.txt")])
+        if file_path:
+            with open(file_path, "w") as file:
+                file.write(export_data)
+            messagebox.showinfo("Export Successful", "Data exported successfully!")
 
 # ADHD Test Questions
 questions = [
@@ -10,55 +211,22 @@ questions = [
     "5. How often do you fidget or squirm with your hands or feet when you have to sit down for a long time?",
     "6. How often do you feel overly active and compelled to do things, like you were driven by a motor?",
     "7. How often do you make careless mistakes when working on a boring or difficult project?",
-    "8. How often do you have difficulty keeping your attention when doing boring or repetitive work?",
-    "9. How often do you have difficulty waiting your turn in situations when turn-taking is required?",
-    "10. How often do you interrupt others when they are busy?",
-    "11. How often do you lose things necessary for tasks or activities?",
-    "12. How often do you feel restless or unable to relax?",
-    "13. How often do you find yourself talking excessively?",
-    "14. How often do you feel distracted by external stimuli?",
-    "15. How often do you have difficulty following through on instructions?",
-    "16. How often do you feel impatient in situations where you need to wait?",
-    "17. How often do you find it hard to stay focused on tasks that require sustained mental effort?",
-    "18. How often do you feel like you are always on the go?",
-    "19. How often do you find it difficult to organize your thoughts?",
-    "20. How often do you feel overwhelmed by tasks or responsibilities?",
-    "21. How often do you forget to complete daily tasks?",
-    "22. How often do you feel like you are easily distracted by your own thoughts?",
-    "23. How often do you find it hard to sit still during meetings or conversations?",
-    "24. How often do you feel like you are unable to control your impulses?",
-    "25. How often do you find it hard to prioritize tasks effectively?",
-    "26. How often do you feel like you are procrastinating on important tasks?",
-    "27. How often do you feel like you are losing track of time?",
-    "28. How often do you feel like you are unable to focus on conversations?",
-    "29. How often do you feel like you are unable to complete tasks on time?",
-    "30. How often do you feel like you are unable to manage your schedule effectively?",
-    "31. How often do you feel like you are unable to stay organized?",
-    "32. How often do you feel like you are unable to manage your emotions effectively?",
-    "33. How often do you feel like you are unable to control your temper?",
-    "34. How often do you feel like you are unable to stay calm in stressful situations?",
-    "35. How often do you feel like you are unable to manage your energy levels effectively?",
-    "36. How often do you feel like you are unable to stay motivated?",
-    "37. How often do you feel like you are unable to stay focused on long-term goals?",
-    "38. How often do you feel like you are unable to manage your time effectively?",
-    "39. How often do you feel like you are unable to stay on task?",
-    "40. How often do you feel like you are unable to manage your workload effectively?",
-    "41. How often do you feel like you are unable to stay organized in your personal life?",
-    "42. How often do you feel like you are unable to manage your finances effectively?",
-    "43. How often do you feel like you are unable to stay focused on your career goals?",
-    "44. How often do you feel like you are unable to manage your relationships effectively?",
-    "45. How often do you feel like you are unable to stay focused on your personal goals?",
-    "46. How often do you feel like you are unable to manage your health effectively?",
-    "47. How often do you feel like you are unable to stay focused on your hobbies?",
-    "48. How often do you feel like you are unable to manage your stress effectively?",
-    "49. How often do you feel like you are unable to stay focused on your education?",
-    "50. How often do you feel like you are unable to manage your responsibilities effectively?"
+    "8. How often do you forget to return calls, pay bills, or keep appointments?"
 ]
 
-# Possible answers
-answers = [["Never", "Rarely", "Sometimes", "Often", "Very Often"]] * len(questions)
+# ADHD Test Answer Choices
+answers = [
+    ["Never", "Rarely", "Sometimes", "Often", "Very Often"],
+    ["Never", "Rarely", "Sometimes", "Often", "Very Often"],
+    ["Never", "Rarely", "Sometimes", "Often", "Very Often"],
+    ["Never", "Rarely", "Sometimes", "Often", "Very Often"],
+    ["Never", "Rarely", "Sometimes", "Often", "Very Often"],
+    ["Never", "Rarely", "Sometimes", "Often", "Very Often"],
+    ["Never", "Rarely", "Sometimes", "Often", "Very Often"],
+    ["Never", "Rarely", "Sometimes", "Often", "Very Often"]
+]
 
-# Scoring weights for each answer
+# ADHD Test Scoring
 scoring = {
     "Never": 0,
     "Rarely": 1,
@@ -67,85 +235,7 @@ scoring = {
     "Very Often": 4
 }
 
-# Global variables
-current_question = 0
-user_responses = []
-
-# Function to handle the next question
-def next_question():
-    global current_question, user_responses 
-
-    # Get the selected answer
-    selected_answer = answer_var.get()
-    if not selected_answer:
-        messagebox.showwarning("Warning", "Please select an answer!")
-        return  # Stop if no answer is selected
-
-    # Save the response
-    user_responses.append(selected_answer)
-
-    # Move to the next question
-    current_question += 1
-
-    if current_question < len(questions):
-        question_label.config(text=questions[current_question])
-        for i, option in enumerate(answers[current_question]):
-            radio_buttons[i].config(text=option, value=option)
-        answer_var.set(None)  # Clear selection
-    else:
-        show_result()
-
-# Function to calculate and display the result
-def show_result():
-    global user_responses
-
-    # Calculate the total score
-    total_score = sum(scoring[response] for response in user_responses if response in scoring)
-
-    # Determine the result
-    if total_score <= 10:
-        result = "Low likelihood of ADHD."
-    elif total_score <= 20:
-        result = "Moderate likelihood of ADHD."
-    else:
-        result = "High likelihood of ADHD."
-
-    # Show the result
-    messagebox.showinfo("ADHD Test Result", f"Your total score is {total_score}. {result}")
-
-    # Reset the test
-    reset_test()
-
-# Function to reset the test
-def reset_test():
-    global current_question, user_responses
-    current_question = 0
-    user_responses = []
-    question_label.config(text=questions[current_question])
-    for i, option in enumerate(answers[current_question]):
-        radio_buttons[i].config(text=option, value=option)
-    answer_var.set(None)
-
-# Create the main window
-root = tk.Tk()
-root.title("ADHD Test App")
-root.geometry("1000x1000")
-
-# Question label
-question_label = tk.Label(root, text=questions[current_question], wraplength=400, justify="left")
-question_label.pack(pady=20)
-
-# Radio buttons for answers
-answer_var = tk.StringVar()
-radio_buttons = []
-for i in range(len(answers[current_question])):
-    rb = tk.Radiobutton(root, text=answers[current_question][i], variable=answer_var, value=answers[current_question][i])
-    rb.pack(anchor="w")
-    radio_buttons.append(rb)
-
-# Next button
-next_button = tk.Button(root, text="Next", command=next_question)
-next_button.pack(pady=20)
-
-# Start the main loop
-root.mainloop()
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = ADHDApp(root)
+    root.mainloop()
